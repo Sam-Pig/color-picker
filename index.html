@@ -1,0 +1,463 @@
+<!doctype  html>
+<html>
+  <head>
+  <meta  charset="utf-8"/>
+  <title>Color Picker</title>
+  <style>
+	  #show,#myCanvas{
+	  margin:10px;
+	  }
+	  #bar{
+	  position:absolute;
+	  left:650px;
+	  margin:10px;
+	  }
+	  label{
+	  margin:10px  0px;
+	  }
+	  #show{
+	  margin-left:10px;
+	  }
+	  input{
+	  border:1px  solid  gray;
+	  width:100px;
+	  height:30px;
+	  border-radius:3px;
+	  font-size:20px;
+	  margin-left:10px;
+	  }
+	  #value{
+	  position:absolute;
+	  top:10px;
+	  left:700px;
+	  display:flex;
+	  flex-direction:column;
+	  }
+	  #move{
+	  box-sizing:border-box;
+	  border:3px  solid  white;
+	  width:30px;
+	  height:30px;
+	  border-radius:50%;
+	  background-color:black;
+	  position:absolute;
+	  top:3px;
+	  left:650px;
+	  cursor:pointer;
+	  }
+	  #circleSelect{
+	  border:2px  solid  white;
+	  box-sizing:border-box;
+	  width:20px;
+	  height:20px;
+	  border-radius:50%;
+	  position:absolute;
+	  top:8px;
+	  left:607px;
+	  cursor:pointer;
+	  }
+	  p{
+	  opacity:0.5;
+	  font-size:12px;
+	  margin:0px;
+	  padding:0px;
+	  }
+  </style>
+  </head>
+  <body>
+      <canvas id="myCanvas"  width="600px"  height="600px" ></canvas>
+	  <div id="circleSelect"></div>
+	  <canvas id="bar" width="10px" height="600px"></canvas>
+	  <div id="move" style="background-color:rgba(255,0,0,1)"></div>
+	  </div>
+	  <div id="value">
+	  <label>R<input type="text" id="colorR" value="255"></label>
+	  <p>请输入0-255之间的数字</p>
+	  <label>G<input type="text" id="colorG" value="0"></label>
+	  <p>请输入0-255之间的数字</p>
+	  <label>B<input type="text" id="colorB" value="0"></label>
+	  <p>请输入0-255之间的数字</p>
+	  <label>H<input type="text" id="colorh" value="0"></label>
+	  <p>请输入0-360之间的数字</p>
+	  <label>S<input type="text" id="colorS" value="1"></label>
+	  <p>请输入0-1之间的数字</p>
+	  <label>L<input type="text" id="colorL" value="0.5"></label>
+	  <p>请输入0-1之间的数字</p>
+	  <label><input type="text" id="colorHex" value="#ff0000"></label>
+	  <canvas  id="show"  width="100px" height="100px"  style="background-color:rgba(255,0,0,1)"></canvas>
+	  </div>
+	  <script>
+	      var myCanvas = document.getElementById("myCanvas");
+	      var bar = document.getElementById("bar"); 
+	      var show = document.getElementById("show"); 
+	      var move = document.getElementById("move"); 
+	      var circleSelect = document.getElementById("circleSelect"); 
+		  var input = document.getElementsByTagName("input");
+		  var  barTop=bar.offsetTop;
+		  var  myCanvasWidth= myCanvas.offsetWidth;
+		  var  myCanvasHeight= myCanvas.offsetHeight;
+		  var nowY; //点击颜色条时的y坐标
+		  var  flag=false; //决定圆形颜色选择器什么时候可以移动
+		  var  selectflag=false; //决定
+		  var  downX; //点击渲染板上的圆形选择器时的X坐标
+		  var  downY; //点击渲染板上的圆形选择器时的Y坐标
+		  var  circleTop; //mousedown发生时，circleSelect当时的上边距
+		  var  circleLeft; //mousedown发生时，circleSelect当时的左边距
+		  var  moveTop; //圆形颜色选择器top值
+		  var  bgcolor; //圆形颜色选择器发生变化时的背景色
+		  var  colorH;  //圆形颜色选择器点击时的Y值
+		  var circleCenterX; //渲染板上圆形选择器中心点X坐标
+		  var circleCenterY; //渲染板上圆形选择器中心点Y坐标
+		  var  showBGcolorR; //渲染板上圆形选择器所选中像素的颜色
+		  var  showBGcolorG;
+		  var  showBGcolorB;
+		  var  H;
+		  var  S;
+		  var  L;
+		  var  colorR = document.getElementById("colorR");
+		  var  colorG = document.getElementById("colorG");
+		  var  colorB = document.getElementById("colorB");
+		  var  colorh = document.getElementById("colorh");
+		  var  colorS = document.getElementById("colorS");
+		  var  colorL = document.getElementById("colorL");
+		  var  colorHex = document.getElementById("colorHex");
+		  
+		  //颜色棒的渐变
+		  var context2=bar.getContext("2d");
+		  var  grd2 = context2.createLinearGradient(0,0,0,600);
+		  grd2.addColorStop(0,"rgb(255,0,0)");
+		  grd2.addColorStop(1/6,"rgb(255,255,0)");
+		  grd2.addColorStop(1/3,"rgb(0,255,0)");
+		  grd2.addColorStop(1/2,"rgb(0,255,255)");
+		  grd2.addColorStop(2/3,"rgb(0,0,255)");
+		  grd2.addColorStop(5/6,"rgb(255,0,255)");
+		  grd2.addColorStop(1,"rgb(255,0,0)");
+		  context2.fillStyle=grd2;
+		  context2.fillRect(0,0,10,600);
+		  
+		  //初始设置画布颜色
+		  var context1=myCanvas.getContext("2d");  
+		  var  grd1 = context1.createLinearGradient(0,0,600,0);//水平渐变
+		  grd1.addColorStop(0,'rgba(255,255,255,1)');
+		  grd1.addColorStop(1,'red');
+		  context1.fillStyle=grd1;
+		  context1.fillRect(0,0,600,600);
+		  var  grd3 = context1.createLinearGradient(0,0,0,600);//垂直渐变
+		  grd3.addColorStop(0,'rgba(0, 0, 0, 0)');
+		  grd3.addColorStop(1,'rgba(0, 0, 0, 1)');
+		  context1.fillStyle=grd3;
+		  context1.fillRect(0,0,600,600);
+		  
+
+		  
+		  //颜色选择器移动时，画布的渐变
+		  function  render(color){
+		  var context1=myCanvas.getContext("2d");
+		  var  grd1 = context1.createLinearGradient(0,0,600,0);//水平渐变
+		  grd1.addColorStop(0,'rgba(255,255,255,1)');
+		  grd1.addColorStop(1,color);
+		  context1.fillStyle=grd1;
+		  context1.fillRect(0,0,600,600);
+		  var  grd3 = context1.createLinearGradient(0,0,0,600);//垂直渐变
+		  grd3.addColorStop(0,'rgba(0, 0, 0, 0)');
+		  grd3.addColorStop(1,'rgba(0, 0, 0, 1)');
+		  context1.fillStyle=grd3;
+		  context1.fillRect(0,0,600,600);
+		  }
+		  
+		  //颜色条上选择器的移动
+		  move.onmousedown=function(event){
+		  flag=true;
+		  moveTop=move.offsetTop;
+		  nowY=event.clientY;
+		  } 
+		  document.addEventListener("mousemove",function(event){
+		  var  moveY=event.clientY;
+		  dis=moveY-nowY;
+		  finalTop=moveTop+dis; 
+		  if(flag){
+		  if(myCanvasHeight+2>=finalTop && finalTop>=3){ //这里将603的=去掉是因为，当colorH为600时，getimgData会从bar最低端下部分取1像素高的颜色值，也就是说取的是白色，那么取色板上的颜色与颜色棒上的红色是不一样的 
+		  move.style.top=finalTop+"px";
+		  colorH=finalTop+move.offsetHeight/2-barTop; //colorH对应的是圆点中心的offsetTop，颜色棒和myCanvas外边距和高度的改动，这里的数值也要做相应改动
+		  console.log(colorH);
+		  var  imgData=context2.getImageData(0,colorH,1,1);
+		  //将rgb转为16进制
+		  var strHex="#";
+		  for(var i=0; i<3; i++){ 
+		  var hex = Number(imgData.data[i]).toString(16);
+		  if(hex.length===1){
+		  hex="0"+hex;  //基于rgb转16进制的原理，如果长度为1，那么在前面加0
+		  }
+		  strHex  +=  hex;
+		  }
+		  bgcolor=strHex;
+		  render(bgcolor); //渲染主色板
+		  move.style.backgroundColor=bgcolor;
+		  pickRenderShow(); //颜色棒上的圆形选择器移动时，也能改变input的value值，即RGB和Hsl
+		  }
+		  }
+		  });
+          
+		  //渲染板上圆形选择器的移动
+		  circleSelect.addEventListener("mousedown",function(event){
+		  selectflag=true;
+		  downX=event.clientX;
+		  downY=event.clientY;
+		  circleTop=circleSelect.offsetTop;
+		  circleLeft=circleSelect.offsetLeft;
+		  })
+		  document.addEventListener("mousemove",function(event){
+		  var  moveX=event.clientX;
+		  var  moveY=event.clientY;
+		  var  circleNowL=(moveX-downX)+circleLeft;
+		  var  circleNowT=(moveY-downY)+circleTop;   
+		  if(selectflag){
+		  if(circleNowL>=8 &&  circleNowL<=myCanvasWidth+7){ //选择器半径的改动以及myCanvas外边距和宽度高度的改动，这里的数值也要做相应改动
+		  circleSelect.style.left=circleNowL+"px";
+		  }
+		  if(circleNowT>=8 && circleNowT<=myCanvasHeight+7){ //选择器半径的改动以及myCanvas外边距和宽度高度的改动，这里的数值也要做相应改动
+		  circleSelect.style.top=circleNowT+"px";
+		  }
+		  pickRenderShow();
+		  }
+		  }) 
+		  
+		  document.addEventListener("mouseup",function(){
+		  flag=false;
+		  selectflag=false;
+		  });
+		  
+		  //通过渲染板上圆形选择器移动而产生的拾色，右下角展示板渲染，各个值的显示变化
+		  function  pickRenderShow(){
+		  //渲染板上的圆形择色器
+		  circleCenterY=circleSelect.offsetTop-18+10; //选择器半径的改动以及myCanvas外边距和宽度高度的改动，这里的数值也要做相应改动
+		  circleCenterX=circleSelect.offsetLeft-18+10; 
+		  var  imageData=context1.getImageData(circleCenterX,circleCenterY,1,1);//用来到达渲染板上圆形选择器中心点位置，然后取宽高各为一像素的像素点
+		  showBGcolorR=imageData.data[0];
+		  showBGcolorG=imageData.data[1];
+		  showBGcolorB=imageData.data[2];
+		  colorR.value=showBGcolorR;
+		  colorG.value=showBGcolorG;
+		  colorB.value=showBGcolorB;
+
+		  //根据渲染板上圆形择色器的rgb，转为16进制，将值填入右边一栏
+		  var str="#";
+		  for(var i=0; i<3; i++){ 
+		  var hex = Number(imageData.data[i]).toString(16);
+		  if(hex.length===1){
+		  hex="0"+hex;  //基于rgb转16进制的原理，如果长度为1，那么在前面加0
+		  }
+		  str  +=  hex;
+		  }
+		  
+		  
+		  //将rgb转换为Hsl
+		   showBGcolorR /= 255, showBGcolorG /= 255, showBGcolorB /= 255;
+		  var max=Math.max(showBGcolorR,showBGcolorG,showBGcolorB);
+		  var min=Math.min(showBGcolorR,showBGcolorG,showBGcolorB);
+		  L=(max+min)/2;
+		  if(max==min){
+		  H=0;
+		  S=0;
+		  }else{
+		  var  d=max-min;
+		  S=L>0.5 ? d/(2-max-min):d/(max+min);
+		  switch(max){
+		  case showBGcolorR: H=60*((showBGcolorG - showBGcolorB)/d+(showBGcolorG <showBGcolorB ? 6 : 0)); break;
+          case showBGcolorG: H=60*( (showBGcolorB - showBGcolorR) / d + 2); break;
+          case showBGcolorB: H=60*((showBGcolorR - showBGcolorG) / d + 4); break;
+		  }
+		  } 
+          colorh.value=Math.round(H);
+		  colorS.value=Number(S.toFixed(2)); //将小数点转换为2位，再将字符串转换为数字
+		  colorL.value=Number(L.toFixed(2)); 
+		  
+		  //使右边颜色展示板能够随左边圆形择色器的改变而改变
+		  var context3=show.getContext("2d");
+		  context3.fillStyle=str;
+		  context3.fillRect(0,0,100,100);
+		  colorHex.value=str; 
+		  }
+		  
+		  //获取输入的RGB值，并作出相应变化
+		  var inputNum=[];
+		  for(var  j=0;j<3;j++){
+		  input[j].addEventListener("keydown",function(){  
+		  setTimeout(function(){  
+		  //setTimeout方法暂定，这是为了在键盘按下后，能够更新rgb，获得最新值，从而改变HSL的值，不然键盘按下的一瞬间，获得的数据是上一次的数据；
+		  inputNum.splice(0,3);  //文本一发生改动，将原先数组的值清空，避免了留下的j变量值，在原有数组的基础上继续添加数组
+          for(var  i=0;i< 3;i++){
+		  inputNum.push(input[i].value);
+		  }  
+		  //利用延迟而获得的最新数值，来改变HSL和十六进制
+		  if(inputNum[0]<=255&& inputNum[1]<=255 && inputNum[2]<=255){ 
+		  rgbTOhex(inputNum[0],inputNum[1],inputNum[2]);
+		  rgbTOhsl(inputNum[0],inputNum[1],inputNum[2]);
+		  var  moveCurrentH=(600*colorh.value)/360-15+18;//利用返回的HSL中的H值，按照比列来确定move的位置
+		  move.style.top=moveCurrentH+"px"; 
+		  var  imgData=context2.getImageData(0,moveCurrentH-18+15,1,1); //变化move的背景色
+		  //将rgb转为16进制
+		  var strHex="#";
+		  for(var i=0; i<3; i++){ 
+		  var hex = Number(imgData.data[i]).toString(16);
+		  if(hex.length===1){
+		  hex="0"+hex;  //基于rgb转16进制的原理，如果长度为1，那么在前面加0
+		  }
+		  strHex  +=  hex;
+		  }  
+		  bgcolor=strHex;
+		  move.style.backgroundColor=bgcolor; 
+		  render(bgcolor); //渲染主色板
+		  
+		  //RGB改变时同时改变渲染板上圆形择色器的位置,根据HSV的原理好定位
+		  var max=Math.max(inputNum[0],inputNum[1],inputNum[2]);
+          var min=Math.min(inputNum[0],inputNum[1],inputNum[2]);
+          var V=Number((max/255).toFixed(2));
+          var S=Number(((max-min)/max).toFixed(2));
+		  var circleL=S*myCanvasWidth-1-10+18;
+		  var circleT=(1-V)*myCanvasHeight-1-10+18;
+		  circleSelect.style.top=circleT+"px"
+		  circleSelect.style.left=circleL+"px"
+		  
+		  //渲染板上圆形择色器的位置改变时，改变展示板的颜色
+		  var context3=show.getContext("2d");
+		  context3.fillStyle=colorHex.value;
+		  context3.fillRect(0,0,100,100);
+		  
+		  }else{
+		  return;
+		  }  
+		  },500)  
+		  })
+		  } 
+		  
+		  
+		  //获取输入的HSL值,并作出相应变化
+		  var inputHSL=[];
+		   for(var  j=3;j<6;j++){
+		  input[j].addEventListener("keydown",function(){
+		  setTimeout(function(){
+		  
+		  inputHSL.splice(0,3); 
+          for(var  i=3;i< 6;i++){
+		  inputHSL.push(input[i].value);
+		  } 
+		  
+		  if(inputHSL[0]<=360 &&inputHSL[1]<=1 && inputHSL[1]>=0 && inputHSL[2]<=1 && inputHSL[2]>=0){
+		  
+          hslToRgb(Number(inputHSL[0]),Number(inputHSL[1]),Number(inputHSL[2]));
+		  
+		  var  moveCurrentH=(600*colorh.value)/360-15+18;
+		  move.style.top=moveCurrentH+"px";//变化move位置
+		  
+		  var  imgData=context2.getImageData(0,moveCurrentH-18+15,1,1); //变化move的背景色
+		  var strHex="#";
+		  for(var i=0; i<3; i++){ 
+		  var hex = Number(imgData.data[i]).toString(16);
+		  if(hex.length===1){
+		  hex="0"+hex;
+		  }
+		  strHex  +=  hex;
+		  }  
+		  bgcolor=strHex;
+		  move.style.backgroundColor=bgcolor; 
+		  render(bgcolor); //渲染主色板
+		  
+		  //RGB改变时同时改变渲染板上圆形择色器的位置,根据HSV的原理好定位
+		  var max=Math.max(colorR.value,colorB.value,colorG.value);
+          var min=Math.min(colorR.value,colorB.value,colorG.value);
+          var V=Number((max/255).toFixed(2));
+          var S=Number(((max-min)/max).toFixed(2));
+		  var circleL=S*myCanvasWidth-1-10+18;
+		  var circleT=(1-V)*myCanvasHeight-1-10+18;
+		  circleSelect.style.top=circleT+"px"
+		  circleSelect.style.left=circleL+"px"
+		  
+		  //渲染板上圆形择色器的位置改变时，改变展示板的颜色
+		  var context3=show.getContext("2d");
+		  context3.fillStyle=colorHex.value;
+		  context3.fillRect(0,0,100,100);
+ 
+		  }else{
+		  return;
+		  }  
+		  },500);
+		  })
+		  }
+		  
+		 
+		  
+          
+		  //根据输入获得的RGB转为HSL
+		  function rgbTOhsl(r,g,b){
+		  var H,S,L;
+		  r = r/255, g =g/255, b =b/255;
+		  var max=Math.max(r,g,b);
+		  var min=Math.min(r,g,b);
+		  L=(max+min)/2;
+		  if(max==min){
+		  H=0;
+		  S=0;
+		  }else{
+		  var  d=max-min;
+		  S=L>0.5 ? d/(2-max-min):d/(max+min);
+		  switch(max){
+		  case r: H=60*((g -b )/d+(g<b ? 6 : 0)); break;
+          case g: H=60*( (b - r) / d + 2); break;
+          case b: H=60*((r - g) / d + 4); break;
+		  }
+		  }
+          colorh.value= Math.round(H);
+          colorS.value= Number(S.toFixed(2));;
+          colorL.value= Number(L.toFixed(2));;
+		  return colorh.value;  
+		  }
+		  
+		  
+		  //根据输入获得的RGB转为十六进制
+		  function rgbTOhex(r,g,b){
+		  var hexR = Number(r).toString(16);
+		  var hexG = Number(g).toString(16);
+		  var hexB = Number(b).toString(16);
+		  hexR.length===1 ? hexR="0"+hexR :  hexR=hexR;
+		  hexG.length===1 ? hexG="0"+hexG :  hexG=hexG;
+		  hexB.length===1 ? hexB="0"+hexB :  hexB=hexB;
+		  var strHex  ="#"+ hexR+hexG+hexB;
+		  colorHex.value=strHex;
+		  }
+		  
+
+		  //根据输入HSL转为RGB，再将rgb转为十六进制
+		  function hslToRgb(h, s, l){
+		  h=h/360;
+          var r1, g1, b1;
+         if(s == 0){
+         r1 = g1 = b1= l;
+        colorR.value=Math.round(r1 * 255);
+        colorG.value=Math.round(g1 * 255);
+        colorB.value=Math.round(b1 * 255); 
+		
+         }else{
+            function hue2rgb(p, q, t){
+            if(t < 0) t += 1;
+            if(t > 1) t -= 1;
+            if(t < 1/6) return (p+ (q - p) * 6 * t);
+            if(t < 1/2) return q;
+            if(t < 2/3) return (p + (q - p) * (2/3 - t) * 6);
+            return p;
+        }
+        var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+        var p = 2 * l - q;
+        r1 = hue2rgb(p, q, (h + 1/3));
+        g1 = hue2rgb(p, q, h);
+        b1 = hue2rgb(p, q, (h - 1/3));
+		colorR.value=Math.round(r1 * 255);
+        colorG.value=Math.round(g1 * 255);
+        colorB.value=Math.round(b1 * 255);
+        }
+		rgbTOhex(Math.round(r1 * 255),Math.round(g1 * 255),Math.round(b1 * 255));
+        }
+		   
+	  </script>
+  </body>
+</html>
